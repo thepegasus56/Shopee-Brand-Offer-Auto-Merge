@@ -1,0 +1,11 @@
+/* General styles for the extension popup */
+body {
+  font-family: sans-serif;
+  width: 300px;
+  padding: 10px;
+}
+
+h1 {
+  font-size: 16px;
+  color: #333;
+}

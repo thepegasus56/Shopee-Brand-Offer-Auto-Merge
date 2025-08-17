@@ -1,0 +1,38 @@
+{
+  "name": "Shopee Brand Offer Extractor",
+  "version": "1.0.0",
+  "description": "Chrome Extension สำหรับดึงและรวมข้อมูลโปรโมชันแบรนด์จาก Shopee Affiliate อัตโนมัติ ใช้สถาปัตยกรรม Clean Architecture",
+  "manifest_version": 3,
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "downloads",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://affiliate.shopee.co.th/*"
+  ],
+  "action": {
+    "default_popup": "src/ui/popup.html",
+    "default_title": "Shopee Brand Offer Extractor"
+  },
+  "background": {
+    "service_worker": "src/core/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://affiliate.shopee.co.th/offer/brand_offer/*"
+      ],
+      "js": [
+        "src/core/content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
