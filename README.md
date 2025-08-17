@@ -28,6 +28,15 @@
 
 ## 📦 โครงสร้างโปรเจกต์
 
+├── manifest.json          # Chrome Extension config
+├── src/
+│   ├── popup.html         # UI หลัก
+│   ├── popup.js          # Logic UI
+│   ├── background.js     # Background service
+│   ├── content.js        # Script ทำงานบนเว็บ
+│   └── styles.css        # CSS styling
+└── README.md             # ✅ มีแล้ว
+
 manifest.json
 src/
 popup.html # UI ส่วนควบคุม
