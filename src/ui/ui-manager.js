@@ -1,7 +1,7 @@
 // ✅ UI Layer - freely editable by UI developers
+import automationApi from '../api/automation-api.js';
 
 // --- DOM Elements ---
-// ส่วนของการเข้าถึง DOM Elements ที่เราต้องการใช้งาน
 const shopBrandOfferIdEl = document.getElementById('shopBrandOfferId');
 const pagesInput = document.getElementById('pagesInput');
 const delayInput = document.getElementById('delayInput');
@@ -14,26 +14,15 @@ const pagesError = document.getElementById('pagesError');
 const delayError = document.getElementById('delayError');
 
 // --- Validation Rules ---
-// กฎการตรวจสอบความถูกต้องของข้อมูลพร้อมข้อความแสดงข้อผิดพลาด
 const validationRules = {
-  pagesInput: {
-    min: 1,
-    max: 20,
-    message: 'ใส่ค่า 1-20'
-  },
-  delayInput: {
-    min: 300,
-    max: 2000,
-    message: 'ใส่ค่า 300-2000'
-  }
+  pagesInput: { min: 1, max: 20, message: 'ใส่ค่า 1-20' },
+  delayInput: { min: 300, max: 2000, message: 'ใส่ค่า 300-2000' }
 };
 
 // --- Event Listeners ---
-// ส่วนของการดักจับ Event ต่างๆ
 document.addEventListener('DOMContentLoaded', initializePopup);
 startButton.addEventListener('click', handleStart);
 stopButton.addEventListener('click', handleStop);
-// เพิ่ม event listener สำหรับการ validate แบบ real-time
 pagesInput.addEventListener('input', validateForm);
 delayInput.addEventListener('input', validateForm);
 
@@ -43,6 +32,16 @@ delayInput.addEventListener('input', validateForm);
  * @description ฟังก์ชันเริ่มต้นการทำงานของ Popup
  */
 async function initializePopup() {
+  // ลงทะเบียนเพื่อรับการอัปเดตความคืบหน้าจาก API
+  // เมื่อ core logic ส่งข้อมูลอัปเดตมา, callback นี้จะทำงาน
+  automationApi.onProgressUpdate((progress) => {
+    console.log('UI received progress update:', progress);
+    updateProgress(progress.percent, progress.message);
+    if (progress.state) {
+      setUiState(progress.state);
+    }
+  });
+
   // ดึง ID จาก URL
   try {
     const response = await chrome.runtime.sendMessage({ type: 'GET_ACTIVE_TAB_URL' });
@@ -63,28 +62,32 @@ async function initializePopup() {
     shopBrandOfferIdEl.textContent = 'Error';
   }
 
-  // โหลดการตั้งค่าและตรวจสอบความถูกต้องของฟอร์ม
+  // โหลดการตั้งค่าและตรวจสอบความถูกต้อง
   await loadSettings();
+
+  // ขอสถานะล่าสุดจาก background เพื่อซิงค์ UI
+  try {
+    const currentState = await automationApi.getStatus();
+    setUiState(currentState.status);
+    updateProgress(currentState.progress, currentState.message);
+  } catch(e) {
+    console.error(e.message);
+  }
+
   validateForm();
 }
 
 /**
  * @name validateInput
  * @description ฟังก์ชันตรวจสอบความถูกต้องของ Input field เดียว
- * @param {HTMLInputElement} inputEl - Element ของ Input
- * @param {HTMLElement} errorEl - Element ที่จะแสดงข้อความ Error
- * @param {object} rules - กฎการตรวจสอบ
- * @returns {boolean} - คืนค่า true ถ้าข้อมูลถูกต้อง
  */
 function validateInput(inputEl, errorEl, rules) {
   const value = parseInt(inputEl.value, 10);
-  // ตรวจสอบว่าเป็นตัวเลขและอยู่ในช่วงที่กำหนดหรือไม่
   if (isNaN(value) || value < rules.min || value > rules.max) {
     inputEl.classList.add('is-invalid');
     errorEl.textContent = rules.message;
     return false;
   }
-  // ถ้าถูกต้อง ลบคลาสและข้อความ error
   inputEl.classList.remove('is-invalid');
   errorEl.textContent = '';
   return true;
@@ -92,15 +95,13 @@ function validateInput(inputEl, errorEl, rules) {
 
 /**
  * @name validateForm
- * @description ฟังก์ชันตรวจสอบความถูกต้องของฟอร์มทั้งหมด และเปิด/ปิดปุ่ม Start
- * @returns {boolean} - คืนค่า true ถ้าฟอร์มทั้งหมดถูกต้อง
+ * @description ฟังก์ชันตรวจสอบความถูกต้องของฟอร์มทั้งหมด
  */
 function validateForm() {
   const isPagesValid = validateInput(pagesInput, pagesError, validationRules.pagesInput);
   const isDelayValid = validateInput(delayInput, delayError, validationRules.delayInput);
 
   const isFormValid = isPagesValid && isDelayValid;
-  // ปิดปุ่ม Start ถ้าฟอร์มไม่ถูกต้อง หรือถ้ากำลังทำงานอยู่
   const isRunning = !stopButton.disabled;
   startButton.disabled = !isFormValid || isRunning;
 
@@ -110,52 +111,48 @@ function validateForm() {
 
 /**
  * @name handleStart
- * @description จัดการเมื่อผู้ใช้กดปุ่ม Start
+ * @description จัดการเมื่อผู้ใช้กดปุ่ม Start โดยเรียกผ่าน API
  */
-function handleStart() {
-  // ตรวจสอบฟอร์มอีกครั้งก่อนเริ่มทำงาน
-  if (!validateForm()) {
-    console.log('Validation failed. Cannot start.');
-    return;
-  }
-  console.log('Start button clicked');
+async function handleStart() {
+  if (!validateForm()) return;
+
   saveSettings();
   setUiState('running');
+  updateProgress(0, 'Starting...');
 
-  let progress = 0;
-  updateProgress(progress, 'Starting...');
-  const intervalId = setInterval(() => {
-    progress += 10;
-    if (progress > 100) progress = 100;
-    updateProgress(progress, `Processing page ${Math.ceil(progress/20)}/${pagesInput.value}...`);
-    if (progress >= 100) {
-      clearInterval(intervalId);
-      setUiState('finished');
-    }
-  }, 500);
-  // เก็บ ID ของ interval ไว้สำหรับหยุด
-  stopButton.dataset.intervalId = intervalId;
+  const config = {
+    pages: pagesInput.value,
+    delay: delayInput.value,
+    offerId: shopBrandOfferIdEl.textContent
+  };
+
+  try {
+    const response = await automationApi.start(config);
+    console.log('Automation started successfully:', response.message);
+  } catch (error) {
+    console.error('Failed to start automation:', error.message);
+    updateProgress(0, error.message); // แสดงข้อผิดพลาดให้ผู้ใช้
+    setUiState('idle');
+  }
 }
 
 /**
  * @name handleStop
- * @description จัดการเมื่อผู้ใช้กดปุ่ม Stop
+ * @description จัดการเมื่อผู้ใช้กดปุ่ม Stop โดยเรียกผ่าน API
  */
-function handleStop() {
-  console.log('Stop button clicked');
-  // หยุดการทำงานของ interval ที่จำลองไว้
-  const intervalId = stopButton.dataset.intervalId;
-  if (intervalId) {
-    clearInterval(parseInt(intervalId, 10));
+async function handleStop() {
+  setUiState('idle'); // อัปเดต UI ทันทีเพื่อการตอบสนองที่ดี
+  try {
+    const response = await automationApi.stop();
+    console.log('Automation stopped successfully:', response.message);
+  } catch (error) {
+    console.error('Failed to stop automation:', error.message);
   }
-  setUiState('idle');
 }
-
 
 /**
  * @name setUiState
  * @description อัปเดตสถานะของ UI ตาม State ที่กำหนด
- * @param {'idle' | 'running' | 'finished'} state
  */
 function setUiState(state) {
   const isRunning = state === 'running';
@@ -164,7 +161,6 @@ function setUiState(state) {
   exportButton.disabled = state !== 'finished';
   pagesInput.disabled = isRunning;
   delayInput.disabled = isRunning;
-  // เรียก validateForm เพื่อจัดการปุ่ม Start ตามสถานะล่าสุด
   validateForm();
 
   if (state === 'idle') {
@@ -192,7 +188,9 @@ function saveSettings() {
     pages: pagesInput.value,
     delay: delayInput.value
   };
-  configApi.setConfig(settings);
+  // Note: This directly uses chrome.storage.sync.
+  // A more robust implementation would use the config-api.js
+  chrome.storage.sync.set(settings);
   console.log('Settings saved:', settings);
 }
 
@@ -202,7 +200,7 @@ function saveSettings() {
  */
 async function loadSettings() {
   try {
-    const settings = await configApi.getConfig();
+    const settings = await new Promise(resolve => chrome.storage.sync.get(resolve));
     if (settings.pages) {
       pagesInput.value = settings.pages;
     }
@@ -214,13 +212,3 @@ async function loadSettings() {
     console.error("Could not load settings:", e);
   }
 }
-
-// Listener สำหรับรับ message จาก background script
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'UPDATE_PROGRESS') {
-    const { progress, status } = message.payload;
-    updateProgress(progress, status);
-  } else if (message.type === 'UPDATE_STATE') {
-    setUiState(message.payload.state);
-  }
-});
