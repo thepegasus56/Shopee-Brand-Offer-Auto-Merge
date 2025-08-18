@@ -33,4 +33,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   // TODO: Add handlers for other message types like 'START_EXTRACTION', 'STOP_EXTRACTION', etc.
+
+  // --- Automation Handlers ---
+  // Placeholder handlers for the automation API
+  else if (message.type === 'START_AUTOMATION') {
+    console.log('Background: Received START_AUTOMATION with config:', message.payload);
+    // TODO: Initialize and start the real AutomationEngine
+    sendResponse({ status: 'ok', message: 'Automation started.' });
+    return true; // Indicate async response
+  }
+
+  else if (message.type === 'STOP_AUTOMATION') {
+    console.log('Background: Received STOP_AUTOMATION');
+    // TODO: Stop the real AutomationEngine
+    sendResponse({ status: 'ok', message: 'Automation stopped.' });
+    return true; // Indicate async response
+  }
+
+  else if (message.type === 'GET_AUTOMATION_STATUS') {
+    console.log('Background: Received GET_AUTOMATION_STATUS');
+    // TODO: Get status from the real AutomationEngine
+    sendResponse({ status: 'idle', progress: 0, message: 'Ready' });
+    return true; // Indicate async response
+  }
 });
