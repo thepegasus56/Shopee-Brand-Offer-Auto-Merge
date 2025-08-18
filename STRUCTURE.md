@@ -1,111 +1,133 @@
-# 🏗️ Project Structure - Shopee Brand Offer Extractor
+# 🏗️ สถาปัตยกรรมและโครงสร้างโปรเจกต์ (Project Architecture & Structure)
 
-เอกสารนี้อธิบายโครงสร้างและสถาปัตยกรรมของโปรเจกต์ที่ใช้หลัก Clean Architecture
+เอกสารนี้อธิบายโครงสร้าง, สถาปัตยกรรม, และแนวทางการพัฒนาของโปรเจกต์ **Shopee Brand Offer Extractor** (อัปเดตล่าสุด)
+
+## 📌 สารบัญ (Table of Contents)
+1. [หลักการ Clean Architecture](#-หลักการ-clean-architecture)
+2. [โครงสร้างไฟล์และโฟลเดอร์](#-โครงสร้างไฟล์และโฟลเดอร์)
+3. [คำอธิบายไฟล์และโฟลเดอร์](#-คำอธิบายไฟล์และโฟลเดอร์)
+    - [Root Level Files](#root-level-files)
+    - [Documentation Files (`docs/`)](#documentation-files-docs)
+    - [Build & Release Files](#build--release-files)
+    - [Source Code (`src/`)](#source-code-src)
+4. [File Permission Matrix](#-file-permission-matrix)
+5. [แนวทางการพัฒนา (Development Guidelines)](#-แนวทางการพัฒนา-development-guidelines)
+
+---
 
 ## 🎯 หลักการ Clean Architecture
 
-### 💡 Core Principles
-1. 🎨 **UI แก้ได้อิสระ** - UI Layer ถูกออกแบบมาให้แก้ไขและปรับเปลี่ยนได้โดยไม่กระทบต่อส่วนอื่นของระบบ เช่น การปรับ Theme, Layout, หรือ Animation
-2. 🔌 **API เป็นสะพาน** - API Layer (Boundary) ทำหน้าที่เป็น "สัญญา" ระหว่าง UI และ Logic การเปลี่ยนแปลงใดๆ ใน Contract นี้จะต้องมีการสื่อสารและตกลงกันระหว่างทีมที่ดูแล UI และทีมที่ดูแล Logic
-3. 🔒 **Logic คือหัวใจ** - Core Layer เป็นส่วนที่สำคัญที่สุดและมีความเสถียรสูง เมื่อส่วนนี้ทำงานได้อย่างถูกต้องแล้ว จะไม่มีการแก้ไขหากไม่จำเป็นจริงๆ เพื่อรักษาความเสถียรของระบบ
-4. 📐 **Constants กลาง** - ค่าคงที่ทั้งหมดจะถูกเก็บไว้ที่ส่วนกลาง (`constants/`) การเปลี่ยนแปลงที่ไฟล์นี้จะมีผลกับทั้งระบบ ทำให้การจัดการค่าต่างๆ เป็นไปอย่างง่ายดาย
+โปรเจกต์นี้ใช้หลัก Clean Architecture เพื่อแบ่งแยกส่วนต่างๆ ของโค้ดออกจากกันอย่างชัดเจน ทำให้ง่ายต่อการแก้ไข, ทดสอบ, และบำรุงรักษา
 
-## 📁 Directory Structure
+### 💡 Core Principles
+1.  🎨 **UI Layer แก้ไขได้อิสระ**: `src/ui/` ถูกออกแบบมาให้ทีม UI สามารถแก้ไขหน้าตา, Layout, และการตอบสนองของผู้ใช้ได้อย่างเต็มที่โดยไม่กระทบ Logic หลัก
+2.  🔌 **API เป็นสะพานเชื่อม**: `src/api/` คือ "สัญญา" (Interface Contract) ที่กำหนดวิธีการสื่อสารระหว่าง UI และ Core Logic การเปลี่ยนแปลงใดๆ ใน API ต้องมีการตกลงกันทั้งสองฝ่าย
+3.  🔒 **Logic คือหัวใจ ห้ามแก้ไขโดยไม่จำเป็น**: `src/core/` เป็นส่วนที่ควบคุมการทำงานหลักทั้งหมด เมื่อทำงานได้อย่างถูกต้องและเสถียรแล้ว จะถูกป้องกันการแก้ไข (Protected) เพื่อรักษาความมั่นคงของระบบ
+4.  📚 **เอกสารคือแผนที่**: `docs/` คือศูนย์รวมเอกสารประกอบทั้งหมด ช่วยให้ทุกคนในทีมเข้าใจภาพรวมและรายละเอียดของโปรเจกต์
+
+---
+
+## 📁 โครงสร้างไฟล์และโฟลเดอร์
+
 ```
 shopee-brand-offer-extractor/
-├── manifest.json                          # ⚙️ ไฟล์กำหนดค่า Chrome Extension
-├── README.md                              # 📖 คู่มือการใช้งาน
-├── PROGRESS.md                            # 📊 ติดตามความคืบหน้า
-├── STRUCTURE.md                           # 🏗️ เอกสารสถาปัตยกรรม
+├── README.md
+├── PROGRESS.md
+├── STRUCTURE.md
+├── manifest.json
+├── build.sh
 │
-└── src/                                   # 📁 โฟลเดอร์ source code หลัก
-    │
-    ├── ui/                                # 🎨 UI LAYER (แก้ได้อิสระ)
-    │   ├── popup.html                     # 🖼️ หน้า UI หลัก
-    │   ├── ui-manager.js                  # 🎛️ ตัวจัดการ UI
-    │   └── styles.css                     # 🎨 CSS Styling
-    │
-    ├── api/                               # 🔌 API BOUNDARY (Interface Contract)
-    │   ├── automation-api.js              # 🤖 API ระบบอัตโนมัติ
-    │   └── config-api.js                  # ⚙️ API จัดการการตั้งค่า
-    │
-    ├── core/                              # 🔒 LOGIC LAYER (ห้ามแก้)
-    │   ├── background.js                  # 🏃‍♂️ Background Service Worker
-    │   ├── content.js                     # 📄 Content Script
-    │   └── automation-engine.js           # 🎯 เครื่องมืออัตโนมัติ
-    │
-    ├── utils/                             # 🔧 UTILITIES (ห้ามแก้)
-    │   └── version.js                     # 📋 Single Source Version
-    │
-    └── constants/                         # 📐 CONSTANTS (ค่าคงที่กลาง)
-        └── config.json                    # ⚙️ ค่าตั้งต้น
+├── docs/
+│   ├── USER_MANUAL.md
+│   ├── INSTALLATION.md
+│   ├── TROUBLESHOOTING.md
+│   ├── API_DOCUMENTATION.md
+│   ├── RELEASE.md
+│   ├── DEPLOYMENT.md
+│   └── PACKAGE_MANIFEST.md
+│
+├── icons/
+│   ├── icon16.png, icon48.png, icon128.png
+│
+└── src/
+    ├── ui/
+    ├── api/
+    ├── core/
+    ├── utils/
+    └── constants/
 ```
+
+---
+
+## 📄 คำอธิบายไฟล์และโฟลเดอร์
+
+### Root Level Files
+-   `README.md`: 📖 คู่มือภาพรวมโปรเจกต์และวิธีเริ่มต้น
+-   `PROGRESS.md`: 📊 ติดตามความคืบหน้า Milestone ต่างๆ
+-   `STRUCTURE.md`: 🏗️ (ไฟล์นี้) อธิบายโครงสร้าง สถาปัตยกรรม และแนวทางการพัฒนา
+-   `manifest.json`: ⚙️ ไฟล์คอนฟิกหลักของ Chrome Extension
+
+### Documentation Files (`docs/`)
+-   `INSTALLATION.md`: 🛠️ คู่มือการติดตั้ง Extension สำหรับนักพัฒนาและผู้ใช้
+-   `USER_MANUAL.md`: 📘 คู่มือการใช้งานฟีเจอร์ต่างๆ ของ Extension
+-   `TROUBLESHOOTING.md`: 🔍 แนวทางการแก้ไขปัญหาที่พบบ่อย
+-   `API_DOCUMENTATION.md`: 🔌 เอกสาร API สำหรับ `automationApi` และ `configApi`
+-   `RELEASE.md`: 🔖 หมายเหตุการเปลี่ยนแปลงในแต่ละเวอร์ชัน (Changelog)
+-   `DEPLOYMENT.md`: 🚀 คู่มือการนำ Extension ขึ้น Chrome Web Store
+-   `PACKAGE_MANIFEST.md`: 📦 รายการไฟล์ทั้งหมดที่ใช้ในการเผยแพร่
+
+### Build & Release Files
+-   `build.sh`: 🛠️ สคริปต์สำหรับสร้างไฟล์ `.zip` อัตโนมัติ เพื่อเตรียมพร้อมสำหรับการเผยแพร่
+
+### Source Code (`src/`)
+-   `src/ui/`: 🎨 **UI Layer** - โค้ดส่วนหน้าจอผู้ใช้ (HTML, CSS, JS)
+-   `src/api/`: 🔌 **API Boundary** - โค้ดที่เป็นสะพานเชื่อมระหว่าง UI และ Core
+-   `src/core/`: 🔒 **Core Logic** - โค้ดที่เป็นหัวใจหลักของระบบ (Service Worker, Automation Engine)
+-   `src/utils/`: ⚙️ **Utilities** - ฟังก์ชันเสริมที่ใช้ร่วมกัน
+-   `src/constants/`: 📐 **Constants** - ค่าคงที่ที่ใช้ทั้งระบบ
+
+---
 
 ## 📋 File Permission Matrix
 
-ตารางนี้แสดงระดับการอนุญาตในการแก้ไขไฟล์สำหรับนักพัฒนาแต่ละส่วน เพื่อรักษาความเสถียรของสถาปัตยกรรม
+ตารางนี้แสดงแนวทางการแก้ไขไฟล์สำหรับนักพัฒนาในแต่ละส่วน
 
-| Layer         | Path (`src/`)        | Editable by UI Dev | Protected (Core Logic) | Description                                                              |
-|---------------|----------------------|:------------------:|:----------------------:|--------------------------------------------------------------------------|
-| 🎨 **UI**     | `ui/`                |         ✅         |           ❌           | **แก้ไขได้เต็มที่** นักพัฒนา UI สามารถปรับเปลี่ยนไฟล์ทั้งหมดในนี้ได้อิสระ |
-| 🔌 **API**    | `api/`               |         ⚠️         |           ⚠️          | **แก้ไขเมื่อจำเป็น** ต้องมีการพูดคุยและตกลงกันก่อน เพราะกระทบทั้ง UI และ Logic |
-| 🔒 **Logic**  | `core/`              |         ❌         |           ✅           | **ห้ามแก้ไข** เป็นส่วน Logic หลักของระบบที่มีความเสถียรสูง                  |
-| 🔧 **Utils**  | `utils/`             |         ❌         |           ✅           | **ห้ามแก้ไข** เป็นฟังก์ชันเสริมที่ใช้ร่วมกันในส่วน Core Logic              |
-| 📐 **Constants**| `constants/`       |         ❌         |           ✅           | **ห้ามแก้ไข** ค่าคงที่กลางของระบบ หากต้องการเปลี่ยนต้องแจ้งทีม Core        |
+| Layer | Path | Permission | 👍 สิ่งที่ควรทำ (DO) | 👎 สิ่งที่ไม่ควรทำ (DO NOT) |
+| :--- | :--- | :--- | :--- | :--- |
+| 🎨 **UI** | `src/ui/` | **Editable** | - แก้ไข HTML, CSS, JS ได้อิสระ <br> - เรียกใช้ฟังก์ชันจาก `src/api/` | - เข้าถึง `src/core/` โดยตรง <br> - เพิ่ม Logic การทำงานหลักใน UI |
+| 🔌 **API** | `src/api/` | **Caution** ⚠️ | - เพิ่มเมธอดใหม่เมื่อมีฟีเจอร์เพิ่ม <br> - แก้ไขเมื่อมีการตกลงร่วมกัน | - เปลี่ยนชื่อหรือ Parameter ของเมธอดที่มีอยู่โดยพลการ |
+| 🔒 **Core** | `src/core/` | **Protected** | - แก้ไข Bug <br> - ปรับปรุงประสิทธิภาพ (Performance) | - เปลี่ยนแปลง Logic หลักที่ทำงานถูกต้องแล้วโดยไม่จำเป็น |
+| ⚙️ **Utils** | `src/utils/` | **Protected** | - เพิ่มฟังก์ชันเสริมที่ใช้ได้ทั่วไป | - เพิ่ม Logic ที่ผูกกับ Business Rule โดยตรง |
+| 📐 **Constants**| `src/constants/`| **Protected**| - อ่านค่าไปใช้ | - แก้ไขค่าคงที่โดยไม่แจ้งทีม Core |
+| 📚 **Docs** | `docs/` | **Editable** | - อัปเดตเอกสารให้ตรงกับโค้ดปัจจุบัน | - ลบเอกสารสำคัญ |
 
-**สัญลักษณ์:**
-- ✅ **Editable**: สามารถแก้ไขได้
-- ❌ **Protected**: ห้ามแก้ไขโดยเด็ดขาด
-- ⚠️ **Caution**: แก้ไขได้เมื่อจำเป็นและต้องได้รับการอนุมัติจากทุกฝ่ายที่เกี่ยวข้อง
+---
 
-## 💡 Development Guidelines
+## 💡 แนวทางการพัฒนา (Development Guidelines)
 
-แนวทางการพัฒนาสำหรับ UI Developer เพื่อให้ทำงานร่วมกันได้อย่างราบรื่น
+### การสื่อสารระหว่าง Layers
+-   **UI -> API**: UI Layer (เช่น `ui-manager.js`) *ต้อง* เรียกใช้ Core Logic ผ่านฟังก์ชันที่ `automationApi` หรือ `configApi` มีให้เท่านั้น
+    ```javascript
+    // ✅ ถูกต้อง: เรียกผ่าน API
+    import automationApi from '../api/automation-api.js';
+    automationApi.start(config);
+    ```
+-   **Core -> UI**: Core Logic (เช่น `background.js`) จะส่งข้อมูลกลับมาให้ UI ผ่านระบบ Event (`chrome.runtime.sendMessage`) ซึ่ง `automationApi` จะเป็นผู้ดักจับและส่งต่อให้ UI ผ่าน Callback
+    ```javascript
+    // ใน background.js
+    // ส่งข้อมูลอัปเดตสถานะ
+    chrome.runtime.sendMessage({ type: 'AUTOMATION_PROGRESS_UPDATE', payload: status });
 
-### สิ่งที่ UI Developer ทำได้ (Do's) 👍
+    // ใน automation-api.js
+    // ลงทะเบียนรอรับข้อมูล
+    automationApi.onProgressUpdate(callback);
+    ```
 
-- **ปรับแก้ UI ได้อย่างอิสระ**: สามารถแก้ไขไฟล์ `popup.html` และ `styles.css` เพื่อเปลี่ยนหน้าตา, Layout, สี, Font หรือเพิ่ม Animation ได้เต็มที่
-- **จัดการ Event และ State ของ UI**: แก้ไข `ui-manager.js` เพื่อจัดการกับการตอบสนองของผู้ใช้บนหน้า UI เช่น การกดปุ่ม, การแสดงผลข้อมูล, หรือการซ่อน/แสดงองค์ประกอบต่างๆ
-- **เรียกใช้ API จาก `automation-api.js` และ `config-api.js`**: ใช้ฟังก์ชันที่ API Layer มีให้เพื่อสั่งงานหรือดึงข้อมูลจาก Core Logic
+### การทดสอบ (Testing)
+-   เนื่องจาก Extension ต้องทำงานกับ `chrome.*` APIs ซึ่งไม่มีในสภาพแวดล้อมการทดสอบปกติ (เช่น Localhost ที่รันด้วย `http.server`), โค้ดใน **API Layer** จึงถูกออกแบบมาให้ยืดหยุ่น
+-   มีการใช้ตัวแปร `isExtensionContext` เพื่อตรวจสอบสภาพแวดล้อมก่อนเรียกใช้ Chrome API จริง ซึ่งช่วยให้สามารถทดสอบ UI บนเบราว์เซอร์ปกติได้โดยไม่เกิด Error
+-   ควรใช้ Playwright ในการทำ Frontend Verification เพื่อสร้าง Screenshot และยืนยันการเปลี่ยนแปลงของ UI
 
-**ตัวอย่างโค้ดที่ทำได้:**
-
-```javascript
-// ใน src/ui/ui-manager.js
-
-// ✅ ถูกต้อง: เรียกใช้ API ที่มีอยู่เพื่อเริ่มการทำงาน
-document.getElementById('startButton').addEventListener('click', () => {
-  // สมมติ automationApi ถูก import เข้ามาแล้ว
-  automationApi.startExtraction();
-});
-
-// ✅ ถูกต้อง: อัปเดต UI ตามข้อมูลที่ได้รับ
-function updateStatus(message) {
-  document.getElementById('statusLabel').textContent = message;
-}
-```
-
-### สิ่งที่ UI Developer ห้ามทำ (Don'ts) 👎
-
-- **ห้ามแก้ไขไฟล์ใน `core/`, `utils/`, `constants/`**: ไฟล์เหล่านี้เป็นส่วนสำคัญของระบบ การแก้ไขอาจทำให้การทำงานหลักผิดพลาด
-- **ห้ามแก้ไข Signature ของฟังก์ชันใน `api/`**: การเปลี่ยนชื่อฟังก์ชัน, Parameter, หรือค่าที่ Return จาก API จะทำให้ส่วนอื่นที่เรียกใช้พังได้ หากจำเป็นต้องเปลี่ยน ต้องพูดคุยกับทีม Core ก่อน
-- **ห้ามเพิ่ม Logic การทำงานหลักเข้าไปใน `ui-manager.js`**: Logic ที่ซับซ้อน เช่น การประมวลผลข้อมูลที่ได้จากหน้าเว็บ ควรอยู่ใน `core/` ไม่ใช่ใน UI Layer
-
-**ตัวอย่างโค้ดที่ห้ามทำ:**
-
-```javascript
-// ใน src/ui/ui-manager.js
-
-// ❌ ผิด: เพิ่ม Logic การดึงข้อมูลจากหน้าเว็บโดยตรงใน UI Layer
-// หน้าที่นี้ควรเป็นของ content.js หรือ automation-engine.js ใน core/
-document.getElementById('extractButton').addEventListener('click', () => {
-  const data = document.querySelector('.shopee-product-item').innerText; // ไม่ควรทำ
-  // process(data)...
-});
-
-// ❌ ผิด: แก้ไขไฟล์ API โดยพลการ
-// ใน src/api/automation-api.js
-function startExtraction(newName) { // เปลี่ยนชื่อ Parameter โดยไม่แจ้ง
-  // ...
-}
-```
+### การจัดการ Source Code
+-   Commit ควรมีขนาดเล็กและสื่อความหมายที่ชัดเจน
+-   การเปลี่ยนแปลงใหญ่ๆ ควรเปิด Branch ใหม่เสมอ (เช่น `feat/new-feature`, `fix/bug-fix`, `docs/update-docs`)
