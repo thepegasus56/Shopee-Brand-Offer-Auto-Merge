@@ -10,31 +10,46 @@ const stopButton = document.getElementById('stopButton');
 const exportButton = document.getElementById('exportButton');
 const progressBar = document.getElementById('progressBar');
 const statusText = document.getElementById('statusText');
+const pagesError = document.getElementById('pagesError');
+const delayError = document.getElementById('delayError');
+
+// --- Validation Rules ---
+// กฎการตรวจสอบความถูกต้องของข้อมูลพร้อมข้อความแสดงข้อผิดพลาด
+const validationRules = {
+  pagesInput: {
+    min: 1,
+    max: 20,
+    message: 'ใส่ค่า 1-20'
+  },
+  delayInput: {
+    min: 300,
+    max: 2000,
+    message: 'ใส่ค่า 300-2000'
+  }
+};
 
 // --- Event Listeners ---
 // ส่วนของการดักจับ Event ต่างๆ
 document.addEventListener('DOMContentLoaded', initializePopup);
 startButton.addEventListener('click', handleStart);
 stopButton.addEventListener('click', handleStop);
+// เพิ่ม event listener สำหรับการ validate แบบ real-time
+pagesInput.addEventListener('input', validateForm);
+delayInput.addEventListener('input', validateForm);
+
 
 /**
  * @name initializePopup
  * @description ฟังก์ชันเริ่มต้นการทำงานของ Popup
- * - ดึง ID จาก URL ของ Tab ปัจจุบัน
- * - โหลดการตั้งค่าล่าสุดจาก Storage
  */
 async function initializePopup() {
   // ดึง ID จาก URL
   try {
-    // การเรียก chrome.* APIs ต้องทำผ่าน background script ใน MV3
-    // เราจะส่ง message ไปขอข้อมูลแทน
     const response = await chrome.runtime.sendMessage({ type: 'GET_ACTIVE_TAB_URL' });
     if (response && response.url) {
       const url = new URL(response.url);
       const pathSegments = url.pathname.split('/');
-      // คาดว่า ID จะอยู่ที่ส่วนท้ายสุดของ Path: /offer/brand_offer/{shopBrandOfferId}
       const offerId = pathSegments[pathSegments.length - 1];
-
       if (offerId && !isNaN(parseInt(offerId))) {
         shopBrandOfferIdEl.textContent = offerId;
       } else {
@@ -46,47 +61,80 @@ async function initializePopup() {
   } catch (error) {
     console.error('Error getting tab URL:', error);
     shopBrandOfferIdEl.textContent = 'Error';
-    // อาจจะเกิดปัญหาถ้า background script ไม่พร้อม
-    // หรือ popup เปิดในหน้าที่ไม่มีสิทธิ์เข้าถึง chrome.tabs
   }
 
-  // โหลดการตั้งค่า
-  loadSettings();
-  // TODO: โหลดสถานะล่าสุด (ถ้ามี) จาก background
+  // โหลดการตั้งค่าและตรวจสอบความถูกต้องของฟอร์ม
+  await loadSettings();
+  validateForm();
 }
+
+/**
+ * @name validateInput
+ * @description ฟังก์ชันตรวจสอบความถูกต้องของ Input field เดียว
+ * @param {HTMLInputElement} inputEl - Element ของ Input
+ * @param {HTMLElement} errorEl - Element ที่จะแสดงข้อความ Error
+ * @param {object} rules - กฎการตรวจสอบ
+ * @returns {boolean} - คืนค่า true ถ้าข้อมูลถูกต้อง
+ */
+function validateInput(inputEl, errorEl, rules) {
+  const value = parseInt(inputEl.value, 10);
+  // ตรวจสอบว่าเป็นตัวเลขและอยู่ในช่วงที่กำหนดหรือไม่
+  if (isNaN(value) || value < rules.min || value > rules.max) {
+    inputEl.classList.add('is-invalid');
+    errorEl.textContent = rules.message;
+    return false;
+  }
+  // ถ้าถูกต้อง ลบคลาสและข้อความ error
+  inputEl.classList.remove('is-invalid');
+  errorEl.textContent = '';
+  return true;
+}
+
+/**
+ * @name validateForm
+ * @description ฟังก์ชันตรวจสอบความถูกต้องของฟอร์มทั้งหมด และเปิด/ปิดปุ่ม Start
+ * @returns {boolean} - คืนค่า true ถ้าฟอร์มทั้งหมดถูกต้อง
+ */
+function validateForm() {
+  const isPagesValid = validateInput(pagesInput, pagesError, validationRules.pagesInput);
+  const isDelayValid = validateInput(delayInput, delayError, validationRules.delayInput);
+
+  const isFormValid = isPagesValid && isDelayValid;
+  // ปิดปุ่ม Start ถ้าฟอร์มไม่ถูกต้อง หรือถ้ากำลังทำงานอยู่
+  const isRunning = !stopButton.disabled;
+  startButton.disabled = !isFormValid || isRunning;
+
+  return isFormValid;
+}
+
 
 /**
  * @name handleStart
  * @description จัดการเมื่อผู้ใช้กดปุ่ม Start
- * - บันทึกการตั้งค่า
- * - เปลี่ยนสถานะ UI เป็น "กำลังทำงาน"
- * - ส่งข้อความไปหา background script เพื่อเริ่มทำงาน
  */
 function handleStart() {
+  // ตรวจสอบฟอร์มอีกครั้งก่อนเริ่มทำงาน
+  if (!validateForm()) {
+    console.log('Validation failed. Cannot start.');
+    return;
+  }
   console.log('Start button clicked');
   saveSettings();
   setUiState('running');
 
-  // ส่งข้อความไปหา background script (ผ่าน API)
-  // automationApi.startExtraction({
-  //   pages: pagesInput.value,
-  //   delay: delayInput.value,
-  //   offerId: shopBrandOfferIdEl.textContent
-  // });
-
-  // --- ตัวอย่างการอัปเดต UI ---
-  // จำลองการทำงานเพื่อแสดงผล
   let progress = 0;
   updateProgress(progress, 'Starting...');
-  const interval = setInterval(() => {
+  const intervalId = setInterval(() => {
     progress += 10;
     if (progress > 100) progress = 100;
     updateProgress(progress, `Processing page ${Math.ceil(progress/20)}/${pagesInput.value}...`);
     if (progress >= 100) {
-      clearInterval(interval);
+      clearInterval(intervalId);
       setUiState('finished');
     }
   }, 500);
+  // เก็บ ID ของ interval ไว้สำหรับหยุด
+  stopButton.dataset.intervalId = intervalId;
 }
 
 /**
@@ -95,11 +143,12 @@ function handleStart() {
  */
 function handleStop() {
   console.log('Stop button clicked');
+  // หยุดการทำงานของ interval ที่จำลองไว้
+  const intervalId = stopButton.dataset.intervalId;
+  if (intervalId) {
+    clearInterval(parseInt(intervalId, 10));
+  }
   setUiState('idle');
-  // TODO: ส่งข้อความไปหา background script เพื่อหยุดทำงาน
-  // automationApi.stopExtraction();
-  // ต้องเคลียร์ interval ของตัวอย่างด้วย
-  // ในโค้ดจริงจะไม่มี interval นี้
 }
 
 
@@ -109,11 +158,14 @@ function handleStop() {
  * @param {'idle' | 'running' | 'finished'} state
  */
 function setUiState(state) {
-  startButton.disabled = state === 'running';
-  stopButton.disabled = state !== 'running';
+  const isRunning = state === 'running';
+
+  stopButton.disabled = !isRunning;
   exportButton.disabled = state !== 'finished';
-  pagesInput.disabled = state === 'running';
-  delayInput.disabled = state === 'running';
+  pagesInput.disabled = isRunning;
+  delayInput.disabled = isRunning;
+  // เรียก validateForm เพื่อจัดการปุ่ม Start ตามสถานะล่าสุด
+  validateForm();
 
   if (state === 'idle') {
     updateProgress(0, 'Ready');
@@ -125,8 +177,6 @@ function setUiState(state) {
 /**
  * @name updateProgress
  * @description อัปเดต Progress bar และข้อความสถานะ
- * @param {number} value - ค่า progress (0-100)
- * @param {string} text - ข้อความที่ต้องการแสดง
  */
 function updateProgress(value, text) {
   progressBar.value = value;
@@ -135,24 +185,22 @@ function updateProgress(value, text) {
 
 /**
  * @name saveSettings
- * @description บันทึกค่า Pages และ Delay ลงใน Chrome Storage
+ * @description บันทึกค่าลงใน Chrome Storage
  */
 function saveSettings() {
   const settings = {
     pages: pagesInput.value,
     delay: delayInput.value
   };
-  // ใช้ API ที่เราสร้างไว้
   configApi.setConfig(settings);
   console.log('Settings saved:', settings);
 }
 
 /**
  * @name loadSettings
- * @description โหลดค่า Pages และ Delay จาก Chrome Storage
+ * @description โหลดค่าจาก Chrome Storage
  */
 async function loadSettings() {
-  // ใช้ try-catch เพื่อป้องกันกรณี API ไม่พร้อมใช้งาน
   try {
     const settings = await configApi.getConfig();
     if (settings.pages) {
@@ -167,9 +215,7 @@ async function loadSettings() {
   }
 }
 
-// ใน Manifest V3, popup ไม่สามารถเข้าถึง chrome.tabs ได้โดยตรง
-// เราต้องเพิ่ม logic ใน background script เพื่อส่ง URL กลับมา
-// นี่คือตัวอย่างการจัดการ message ใน ui-manager.js
+// Listener สำหรับรับ message จาก background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'UPDATE_PROGRESS') {
     const { progress, status } = message.payload;
