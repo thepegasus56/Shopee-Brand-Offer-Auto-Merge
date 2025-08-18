@@ -52,7 +52,20 @@
         <div class="button-group">
           <button id="startButton" class="btn btn-primary">Start</button>
           <button id="stopButton" class="btn btn-warning" disabled>Stop</button>
-          <button id="exportButton" class="btn btn-success" disabled>Export CSV</button>
+          <button id="exportCsvButton" class="btn btn-success" disabled>Export CSV</button>
+        </div>
+      </section>
+
+      <section class="import-export-section" aria-labelledby="import-export-heading">
+        <h2 id="import-export-heading" class="sr-only">Import/Export Settings</h2>
+        <div class="import-export-controls">
+            <button id="exportSettingsButton" class="btn btn-secondary">Export</button>
+            <button id="toggleImportButton" class="btn btn-secondary">Import</button>
+        </div>
+        <div id="importContainer" class="import-container hidden">
+            <label for="importTextarea" class="sr-only">Paste JSON settings here</label>
+            <textarea id="importTextarea" placeholder="Paste JSON settings here..."></textarea>
+            <button id="importSettingsButton" class="btn btn-primary">Confirm Import</button>
         </div>
       </section>
 
@@ -65,8 +78,8 @@
     </main>
   </div>
 
-  <script src="../api/config-api.js"></script>
-  <script src="../api/automation-api.js"></script>
-  <script src="ui-manager.js"></script>
+  <script type="module" src="../api/config-api.js"></script>
+  <script type="module" src="../api/automation-api.js"></script>
+  <script type="module" src="ui-manager.js"></script>
 </body>
 </html>

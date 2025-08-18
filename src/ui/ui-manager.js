@@ -1,5 +1,6 @@
 // ✅ UI Layer - freely editable by UI developers
 import automationApi from '../api/automation-api.js';
+import { configApi } from '../api/config-api.js';
 
 // --- DOM Elements ---
 const shopBrandOfferIdEl = document.getElementById('shopBrandOfferId');
@@ -12,6 +13,12 @@ const progressBar = document.getElementById('progressBar');
 const statusText = document.getElementById('statusText');
 const pagesError = document.getElementById('pagesError');
 const delayError = document.getElementById('delayError');
+const exportSettingsButton = document.getElementById('exportSettingsButton');
+const toggleImportButton = document.getElementById('toggleImportButton');
+const importContainer = document.getElementById('importContainer');
+const importTextarea = document.getElementById('importTextarea');
+const importSettingsButton = document.getElementById('importSettingsButton');
+const exportCsvButton = document.getElementById('exportCsvButton');
 
 // --- Validation Rules ---
 const validationRules = {
@@ -25,6 +32,10 @@ startButton.addEventListener('click', handleStart);
 stopButton.addEventListener('click', handleStop);
 pagesInput.addEventListener('input', validateForm);
 delayInput.addEventListener('input', validateForm);
+exportSettingsButton.addEventListener('click', handleExportSettings);
+toggleImportButton.addEventListener('click', handleToggleImport);
+importSettingsButton.addEventListener('click', handleImportSettings);
+exportCsvButton.addEventListener('click', handleExportCsv);
 
 
 /**
@@ -158,7 +169,7 @@ function setUiState(state) {
   const isRunning = state === 'running';
 
   stopButton.disabled = !isRunning;
-  exportButton.disabled = state !== 'finished';
+  exportCsvButton.disabled = state !== 'finished';
   pagesInput.disabled = isRunning;
   delayInput.disabled = isRunning;
   validateForm();
@@ -181,34 +192,90 @@ function updateProgress(value, text) {
 
 /**
  * @name saveSettings
- * @description บันทึกค่าลงใน Chrome Storage
+ * @description บันทึกค่าลงใน Chrome Storage ผ่าน API
  */
 function saveSettings() {
   const settings = {
     pages: pagesInput.value,
     delay: delayInput.value
   };
-  // Note: This directly uses chrome.storage.sync.
-  // A more robust implementation would use the config-api.js
-  chrome.storage.sync.set(settings);
-  console.log('Settings saved:', settings);
+  configApi.set(settings).catch(error => {
+    console.error("Failed to save settings:", error.message);
+    // TODO: อาจจะแสดงข้อผิดพลาดบน UI
+  });
 }
 
 /**
  * @name loadSettings
- * @description โหลดค่าจาก Chrome Storage
+ * @description โหลดค่าจาก Chrome Storage ผ่าน API
  */
 async function loadSettings() {
   try {
-    const settings = await new Promise(resolve => chrome.storage.sync.get(resolve));
+    const settings = await configApi.get();
     if (settings.pages) {
       pagesInput.value = settings.pages;
     }
     if (settings.delay) {
       delayInput.value = settings.delay;
     }
-    console.log('Settings loaded:', settings);
+    console.log('Settings loaded via API:', settings);
   } catch(e) {
-    console.error("Could not load settings:", e);
+    console.error("Could not load settings via API:", e.message);
   }
+}
+
+/**
+ * @name handleExportSettings
+ * @description จัดการการส่งออกการตั้งค่าเป็นไฟล์
+ */
+function handleExportSettings() {
+  console.log('Export settings button clicked');
+  configApi.exportToFile();
+}
+
+/**
+ * @name handleToggleImport
+ * @description สลับการแสดงผลของส่วนนำเข้าการตั้งค่า
+ */
+function handleToggleImport() {
+  importContainer.classList.toggle('hidden');
+}
+
+/**
+ * @name handleImportSettings
+ * @description จัดการการนำเข้าการตั้งค่าจาก textarea
+ */
+async function handleImportSettings() {
+  const jsonString = importTextarea.value;
+  if (!jsonString.trim()) {
+    alert('กรุณาใส่ข้อมูล JSON ที่จะนำเข้า');
+    return;
+  }
+  try {
+    const importedConfig = await configApi.importFromString(jsonString);
+    // อัปเดตค่าบน UI และ validate ใหม่
+    pagesInput.value = importedConfig.pages;
+    delayInput.value = importedConfig.delay;
+    validateForm();
+    importTextarea.value = ''; // เคลียร์ textarea
+    importContainer.classList.add('hidden'); // ซ่อนส่วน import
+  } catch (error) {
+    alert(error.message); // แสดงข้อผิดพลาดให้ผู้ใช้
+  }
+}
+
+/**
+ * @name handleExportCsv
+ * @description ส่งคำสั่งให้ background script สร้างและดาวน์โหลดไฟล์ CSV
+ */
+function handleExportCsv() {
+    console.log("Export CSV button clicked.");
+    chrome.runtime.sendMessage({ type: 'DOWNLOAD_CSV' }, (response) => {
+        if (chrome.runtime.lastError) {
+            console.error(chrome.runtime.lastError.message);
+            alert("เกิดข้อผิดพลาดในการส่งออก CSV");
+        } else if (response && response.status === 'error') {
+            alert(`ไม่สามารถส่งออกได้: ${response.message}`);
+        }
+    });
 }
