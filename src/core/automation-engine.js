@@ -11,8 +11,9 @@ export class AutomationEngine {
    * @constructor
    * @param {function(object): void} statusUpdater - Callback function สำหรับส่งสถานะกลับไป
    */
-  constructor(statusUpdater) {
+  constructor(statusUpdater, dataHandler) {
     this.statusUpdater = statusUpdater;
+    this.dataHandler = dataHandler;
     this.isRunning = false;
     this.isStopping = false;
     this.config = {};
@@ -104,6 +105,16 @@ export class AutomationEngine {
     await new Promise(resolve => setTimeout(resolve, 500));
     await this._getLinks();
     await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // TODO: This should be replaced with actual data scraped from content.js
+    if (this.dataHandler) {
+      console.log("Engine: Sending mock data to data handler.");
+      const mockData = [
+        { product_name: `Product A-Page${this.currentPage}`, offer_link: `https://shopee.com/link-A-${this.currentPage}` },
+        { product_name: `Product B-Page${this.currentPage}`, offer_link: `https://shopee.com/link-B-${this.currentPage}` }
+      ];
+      this.dataHandler(mockData);
+    }
   }
 
   /**

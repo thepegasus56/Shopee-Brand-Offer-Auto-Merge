@@ -18,6 +18,7 @@ const toggleImportButton = document.getElementById('toggleImportButton');
 const importContainer = document.getElementById('importContainer');
 const importTextarea = document.getElementById('importTextarea');
 const importSettingsButton = document.getElementById('importSettingsButton');
+const exportCsvButton = document.getElementById('exportCsvButton');
 
 // --- Validation Rules ---
 const validationRules = {
@@ -34,6 +35,7 @@ delayInput.addEventListener('input', validateForm);
 exportSettingsButton.addEventListener('click', handleExportSettings);
 toggleImportButton.addEventListener('click', handleToggleImport);
 importSettingsButton.addEventListener('click', handleImportSettings);
+exportCsvButton.addEventListener('click', handleExportCsv);
 
 
 /**
@@ -167,7 +169,7 @@ function setUiState(state) {
   const isRunning = state === 'running';
 
   stopButton.disabled = !isRunning;
-  exportButton.disabled = state !== 'finished';
+  exportCsvButton.disabled = state !== 'finished';
   pagesInput.disabled = isRunning;
   delayInput.disabled = isRunning;
   validateForm();
@@ -260,4 +262,20 @@ async function handleImportSettings() {
   } catch (error) {
     alert(error.message); // แสดงข้อผิดพลาดให้ผู้ใช้
   }
+}
+
+/**
+ * @name handleExportCsv
+ * @description ส่งคำสั่งให้ background script สร้างและดาวน์โหลดไฟล์ CSV
+ */
+function handleExportCsv() {
+    console.log("Export CSV button clicked.");
+    chrome.runtime.sendMessage({ type: 'DOWNLOAD_CSV' }, (response) => {
+        if (chrome.runtime.lastError) {
+            console.error(chrome.runtime.lastError.message);
+            alert("เกิดข้อผิดพลาดในการส่งออก CSV");
+        } else if (response && response.status === 'error') {
+            alert(`ไม่สามารถส่งออกได้: ${response.message}`);
+        }
+    });
 }
