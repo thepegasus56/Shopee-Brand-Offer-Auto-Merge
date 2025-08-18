@@ -1,59 +1,78 @@
 // This is the background service worker.
-// It will handle tasks like listening for extension icon clicks,
-// managing state, and coordinating other parts of the extension.
+// It orchestrates the AutomationEngine and communicates with the UI layer.
+import { AutomationEngine } from './automation-engine.js';
+
+// --- State Management ---
+// สร้าง instance เดียวของ AutomationEngine เพื่อจัดการสถานะ
+// A function to send progress updates to the UI layer (via the popup)
+const statusUpdater = (progress) => {
+  console.log('Background: Sending progress update to UI:', progress);
+  chrome.runtime.sendMessage({
+    type: 'AUTOMATION_PROGRESS_UPDATE',
+    payload: progress,
+  }).catch(error => {
+      if (error.message.includes("Could not establish connection")) {
+          console.log("UI popup is not open. Suppressing error.");
+      } else {
+          console.error("Send message error:", error);
+      }
+  });
+};
+
+const engine = new AutomationEngine(statusUpdater);
 
 /**
  * @name onMessage
- * @description Listener for messages from other parts of the extension, like the popup.
+ * @description Listener สำหรับรับข้อความจาก API Layer (popup)
  */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // Check the message type to decide what to do.
+  // --- Get Active Tab Handler ---
   if (message.type === 'GET_ACTIVE_TAB_URL') {
-    // Query for the active tab in the current window.
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (chrome.runtime.lastError) {
-        // Handle any errors that occur during the query.
-        console.error("Error querying tabs:", chrome.runtime.lastError);
+        console.error("Error querying tabs:", chrome.runtime.lastError.message);
         sendResponse({ error: "Could not query tabs." });
         return;
       }
-
       if (tabs.length > 0 && tabs[0].url) {
-        // If a tab is found, send its URL back to the popup.
         sendResponse({ url: tabs[0].url });
       } else {
-        // If no active tab or URL is found.
         sendResponse({ url: null });
       }
     });
-
-    // Return true to indicate that we will send a response asynchronously.
-    // This is crucial for the message channel to stay open.
-    return true;
+    return true; // Keep message channel open for async response
   }
 
-  // TODO: Add handlers for other message types like 'START_EXTRACTION', 'STOP_EXTRACTION', etc.
-
   // --- Automation Handlers ---
-  // Placeholder handlers for the automation API
   else if (message.type === 'START_AUTOMATION') {
     console.log('Background: Received START_AUTOMATION with config:', message.payload);
-    // TODO: Initialize and start the real AutomationEngine
-    sendResponse({ status: 'ok', message: 'Automation started.' });
-    return true; // Indicate async response
+    // หา Tab ที่ Active อยู่เพื่อส่ง ID ไปให้ Engine
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs.length > 0) {
+            // เรียก engine.start แต่ไม่ต้องรอ (non-blocking)
+            engine.start(message.payload, tabs[0].id);
+            sendResponse({ status: 'ok', message: 'Automation process started.' });
+        } else {
+            console.error("No active tab found to start automation.");
+            sendResponse({ status: 'error', message: 'ไม่พบ Tab ที่จะเริ่มทำงาน' });
+        }
+    });
+    return true; // จำเป็นสำหรับการตอบกลับแบบ asynchronous
   }
 
   else if (message.type === 'STOP_AUTOMATION') {
     console.log('Background: Received STOP_AUTOMATION');
-    // TODO: Stop the real AutomationEngine
-    sendResponse({ status: 'ok', message: 'Automation stopped.' });
-    return true; // Indicate async response
+    engine.stop(); // เรียกใช้เมธอด stop ของ engine
+    sendResponse({ status: 'ok', message: 'Stop signal sent.' });
   }
 
   else if (message.type === 'GET_AUTOMATION_STATUS') {
-    console.log('Background: Received GET_AUTOMATION_STATUS');
-    // TODO: Get status from the real AutomationEngine
-    sendResponse({ status: 'idle', progress: 0, message: 'Ready' });
-    return true; // Indicate async response
+    // ดึงสถานะจาก engine โดยตรง
+    const status = {
+        status: engine.isRunning ? 'running' : 'idle',
+        progress: engine.isRunning ? Math.round(((engine.currentPage - 1) / (engine.config.pages || 1)) * 100) : (engine.isStopping ? 0 : 100),
+        message: engine.isRunning ? `Page ${engine.currentPage} of ${engine.config.pages || 'N/A'}` : 'Ready'
+    };
+    sendResponse(status);
   }
 });
