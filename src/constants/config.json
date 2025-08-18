@@ -1,0 +1,9 @@
+{
+  "defaultSettings": {
+    "autoStart": false,
+    "downloadFormat": "csv"
+  },
+  "apiEndpoints": {
+    "shopeeBaseUrl": "https://affiliate.shopee.co.th"
+  }
+}

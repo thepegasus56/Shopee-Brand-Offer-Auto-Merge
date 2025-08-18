@@ -1,0 +1,66 @@
+<!-- ✅ UI Layer - freely editable by UI developers -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shopee Brand Offer Extractor</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="card">
+    <header class="header">
+      <h1 class="title">Shopee Brand Offer Extractor <span class="version">v1.0.0</span></h1>
+    </header>
+
+    <main>
+      <section class="info-section" aria-labelledby="info-heading">
+        <h2 id="info-heading" class="sr-only">Offer Information</h2>
+        <div class="info-item">
+          <label for="shopBrandOfferId">Offer ID:</label>
+          <span id="shopBrandOfferId" class="info-value">Detecting...</span>
+        </div>
+      </section>
+
+      <form class="settings-form" id="settingsForm">
+        <section aria-labelledby="settings-heading">
+          <h2 id="settings-heading" class="sr-only">Settings</h2>
+          <div class="form-group">
+            <label for="pagesInput">Pages:</label>
+            <input type="number" id="pagesInput" name="pages" min="1" max="20" value="5" class="form-control" aria-describedby="pages-desc">
+            <small id="pages-desc" class="sr-only">Number of pages to process (1-20).</small>
+          </div>
+          <div class="form-group">
+            <label for="delayInput">Delay (ms):</label>
+            <input type="number" id="delayInput" name="delay" min="300" max="2000" value="700" step="100" class="form-control" aria-describedby="delay-desc">
+            <small id="delay-desc" class="sr-only">Delay between operations in milliseconds (300-2000).</small>
+          </div>
+        </section>
+      </form>
+
+      <section class="actions-section" aria-labelledby="actions-heading">
+        <h2 id="actions-heading" class="sr-only">Actions</h2>
+        <div class="button-group">
+          <button id="startButton" class="btn btn-primary">Start</button>
+          <button id="stopButton" class="btn btn-warning" disabled>Stop</button>
+          <button id="exportButton" class="btn btn-success" disabled>Export CSV</button>
+        </div>
+      </section>
+
+      <section class="progress-section" aria-labelledby="progress-heading" aria-live="polite">
+        <h2 id="progress-heading" class="sr-only">Progress</h2>
+        <label for="progressBar" class="sr-only">Extraction Progress</label>
+        <progress id="progressBar" value="0" max="100"></progress>
+        <p id="statusText" class="status-text">Ready</p>
+      </section>
+    </main>
+  </div>
+
+  <script src="../api/config-api.js"></script>
+  <script src="../api/automation-api.js"></script>
+  <script src="ui-manager.js"></script>
+</body>
+</html>
